@@ -29,6 +29,9 @@ mDatasheetVariables
 ; - STRINGS -
 mStringVariables
 
+; - INPUTS -
+mInputVariables
+
 .code
 
 .startup
@@ -40,10 +43,12 @@ mStringVariables
         mWaitForEnter
         mPrint newLine
 
+    datasheet_sequence:
         mPrintDatasheet
         mPrint promptIndicator
+        mWaitForInput
 
-        mWaitForEnter
+        mProccessCommand
 
         jmp end_program
 

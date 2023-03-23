@@ -5,8 +5,53 @@ mDatasheetVariables macro
     datasheet dw 0fdh dup(0)
     datasheetNumRows equ 17
     datasheetNumCols equ 0b
+
+    ; ---- Commands ----
+
+    ; Cell operations 
+    
+    ; Arithmetic operations
+    commandSetCell db "GUARDAR", "$"
+    
+    commandSum db "SUMA", "$"
+    commandSubstract db "RESTA", "$"
+    commandMultiply db "MULTIPLICAR", "$"
+    commandDivide db "DIVIDIR", "$"
+    commandPower db "POTENCIA", "$"
+
+    ; Logical operations
+    commandOr db "OLOGICO", "$"
+    commandAnd db "YLOGICO", "$"
+    commandNot db "NOLOGICO", "$"
+    commandXor db "OXLOGICO", "$"
+
+    ; range operations
+
+    commandFill db "LLENAR", "$"
+    commandAverage db "PROMEDIO", "$"
+    commandMin db "MINIMO", "$"
+    commandMax db "MAXIMO", "$"
+
+    ; General operations
+    commandSeparator db "Y", "$"
+    commandIn db "EN", "$"
+    commandBetween db "ENTRE", "$"
+    commandFrom db "DESDE", "$"
+    commandTo db "HASTA", "$"
+    commandExponent db "A LA", "$"
+    commandFileDelimiter db "SEPARADO POR COMA", "$"
+    commandFileDestination db "HACIA, "$"
+
+
+    ; input/output operations
+    commandImport db "IMPORTAR", "$"
+    commandExport db "EXPORTAR", "$"
+
 endm
 
+mProccessCommand macro
+
+endm
 
 mPrintDatasheet macro 
 
