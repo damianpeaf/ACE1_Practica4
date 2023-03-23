@@ -5,7 +5,7 @@ commandBuffer db 100h dup('$')
 endm
 
 
-
+; Description: Waits for the user to press enter
 mWaitForEnter macro
     LOCAL press_enter
     press_enter:
@@ -15,6 +15,11 @@ mWaitForEnter macro
         jne press_enter
 endm
 
+
+; Description: Waits for user input and stores it in the commandBuffer
+;              Resets the commandBuffer before reading the input
+; Input: None
+; Output: None
 mWaitForInput macro
 
     local reinit_loop
@@ -43,4 +48,41 @@ mWaitForInput macro
     pop bx
     pop ax
 
+endm
+
+; Description: Skips all white spaces until the first non white space character
+; Input: SI - absolute address of the buffer
+; Output: SI - absoulte address of the first non white space character
+mSkipWhiteSpaces macro
+
+    local skip_white_spaces, end
+    push ax
+
+    ; skip white spaces
+    skip_white_spaces:
+        mov al, [si]
+        cmp al, ' '
+        jne end
+        inc si
+    end:
+        pop ax
+
+endm
+
+mSkipUntilWhiteSpaces macro
+
+    local skip_until_white_spaces, end
+
+    push ax
+
+    ; skip until white spaces
+    skip_until_white_spaces:
+        mov al, [si]
+        cmp al, ' '
+        je end
+        mPrintAddress si
+        mWaitForEnter
+        inc si
+    end:
+        pop ax
 endm

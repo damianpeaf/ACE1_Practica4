@@ -46,11 +46,11 @@ mInputVariables
     datasheet_sequence:
         mPrintDatasheet
         mPrint promptIndicator
-        mWaitForInput
+        mEvalPromt
 
-        mProccessCommand
+        jmp datasheet_sequence
 
-        jmp end_program
+    mOperations ; Operations labels
 
 end_program:
     mov al, 0

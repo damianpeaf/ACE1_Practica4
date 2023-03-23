@@ -1,13 +1,15 @@
 mStringVariables macro
-    numberString db 6 dup (?)
+    numberString db 6 dup ("$")
     numberStringEnd db "$"
     
-    stringRepresentationErrorMessage db "Error: The number is too big to be represented", 0dh, 0ah, "$"
+    numberRepresentationError db "El numero no puede ser representado", 0dh, 0ah, "$"
     
     negativeNumber db 0
 
     rowHeader db 2 dup (?)
     rowHeaderEnd db "$"
+
+    maxReprestableNumber equ 7fffh
 endm
 
 
@@ -23,17 +25,15 @@ mNumberToString macro
     push ax
     push bx
     push cx
-    push dx
     push si
     
     mov cx, 0
-
     ; Comparte if its a negative number
+    mov [negativeNumber], 0
     cmp ax, 0
     jge convert_positive
 
     convert_negative:
-
         mov [negativeNumber], 1 ; Set the negative number flag to 1
         inc cx
 
@@ -92,7 +92,7 @@ mNumberToString macro
     jmp end
 
     representation_error:
-        mPrint stringRepresentationErrorMessage
+        mPrint numberRepresentationError
 
         ; empty the stack
         empty_stack:
@@ -104,13 +104,73 @@ mNumberToString macro
     end:
         ; REGISTER RESTORATION
         pop si
-        pop dx
         pop cx
         pop bx
         pop ax
 
 endm
 
+; Description: Converts a string to a sign number of 16 bits
+; Input : None, uses the [numberString] variable and the [negativeNumber] variable
+; Output: saves the number in [numberReference] variable
+;         DX - 0 if no error [No representable number], 1 if error
+mStringToNumber macro
+
+    local eval_digit, error, end, save
+
+    ; Register protection
+    push ax
+    push bx
+    push cx
+    push si
+    push di
+
+    mov bx, 0ah
+    mov si, 0
+    mov ax, 0
+    mov dx, 0
+
+    eval_digit:
+        mul bx
+        mov dl, numberString[si]
+        sub dl, '0'
+        add ax, dx
+
+        inc si
+
+        cmp numberString[si], "$"
+        jne eval_digit
+
+    ; represetable number validation
+    cmp ax, maxReprestableNumber
+    jg error
+
+    cmp [negativeNumber], 1
+    jne save
+
+    neg ax
+
+    save:
+        mov dx, 0
+        mov [numberReference], ax
+        jmp end
+
+    error:
+        mPrint numberRepresentationError
+        mPrint newLine
+        
+        mov dx, 1
+        jmp end
+
+    end: 
+        ; Register restoration
+        pop di
+        pop si
+        pop cx
+        pop bx
+        pop ax
+
+endm
 
 ; Description: Prints a a number from 0 to 24 formated as 2 digit string
 ; Input : AX - number to print
@@ -149,4 +209,62 @@ mPrintRowHeader macro
         pop bx
         pop ax
 
+endm
+
+
+; Description: Compares two strings
+; Input : DI - string 1 address
+;         SI - string 2 address
+;         CX - Characters to compare
+; Output: DX - 0 if equal, 1 if not equal
+mCompareStrings macro
+
+    LOCAL compare, end
+
+    ; REGISTER PROTECTION
+    push ax
+    push bx
+    push cx
+    push si
+    push di
+
+    mov dx, 1 ; Not equal
+    compare:
+        mov al, [di]
+        mov bl, [si]
+        cmp al, bl
+        jne end
+        inc di
+        inc si
+        loop compare
+
+    mov dx, 0 ; Equal
+    jmp end
+
+    end:
+        ; REGISTER RESTORATION
+        pop di
+        pop si
+        pop cx
+        pop bx
+        pop ax
+endm
+
+
+mResetNumberString macro
+    local reset
+
+    push cx
+    push si
+
+    mov cx, 6
+    mov si, 0
+
+    reset:
+        mov numberString[si], "$"
+        inc si
+        loop reset
+
+    pop si
+    pop cx
 endm
