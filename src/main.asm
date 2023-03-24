@@ -10,6 +10,7 @@ include utils.asm
 include inputs.asm
 include strings.asm
 include excel.asm
+include files.asm
 
 .model small
 .stack
@@ -31,6 +32,9 @@ mStringVariables
 
 ; - INPUTS -
 mInputVariables
+
+; - FILES -
+mFilesVariables
 
 .code
 

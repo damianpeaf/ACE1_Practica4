@@ -344,11 +344,15 @@ mCheckCellReference macro
     mCheckNumberReference
     cmp dx, 0
     je no_cell_reference
-
-    ;TODO : VALIDATE ROW
-
     mov [numberReference], bx ; restore the prev value of numberReference
     dec ax ; Now in AX we have the row number in 0 based index
+
+    ; validate the row number
+    cmp ax, 0
+    jl no_cell_reference
+
+    cmp ax, datasheetNumRows
+    jge no_cell_reference
 
     ; Save the cell row/col
     mov [cellRowReference], al

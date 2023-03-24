@@ -143,7 +143,7 @@ mStringToNumber macro
 
     ; represetable number validation
     cmp ax, maxReprestableNumber
-    jg error
+    ja error
 
     cmp [negativeNumber], 1
     jne save
