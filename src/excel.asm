@@ -61,6 +61,9 @@ mDatasheetVariables macro
     destinationReferenceError db "Error en la referencia de destino", "$"
     destinationCellError   db "Error en la celda de destino", "$"
 
+
+    debug                  db "!", "$"
+
 endm
 
 
@@ -143,6 +146,10 @@ mEvalPromt macro
     cmp dx, 0
     je set_operation
 
+    ; IMPORT File
+    mEvalCommand commandImport
+    cmp dx, 0
+    je import_file
 
     ; TODO: Rest of the commands
 
@@ -204,6 +211,34 @@ mOperations macro
             jmp end_set_operation
 
         end_set_operation:
+            jmp datasheet_sequence
+
+    import_file:
+        mSkipWhiteSpaces
+
+        ; Get the file name
+        mGetFileName
+        mSkipWhiteSpaces
+        mEvalCommand commandFileDelimiter
+        cmp dx, 1
+        je import_file_error
+
+        ; Open and read the file
+        mReadImportFile
+        cmp dx, 1
+        je read_file_error
+
+
+        jmp end_import_file
+
+
+        import_file_error:
+            mPrint notRecognized
+        read_file_error:
+            mWaitForEnter
+            jmp end_import_file
+
+        end_import_file:
             jmp datasheet_sequence
 
 endm

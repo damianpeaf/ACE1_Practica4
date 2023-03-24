@@ -40,6 +40,9 @@ mWaitForInput macro
         inc si
         loop reinit_loop
 
+    mov si, 0
+    mov commandBuffer[si], 0feh
+
     lea dx, commandBuffer 
     mov ah, 0ah
     int 21h
