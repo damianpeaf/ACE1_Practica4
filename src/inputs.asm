@@ -1,6 +1,7 @@
 mInputVariables macro
 
 commandBuffer db 100h dup('$')
+commandEnd dw '$'
 
 endm
 
@@ -30,8 +31,8 @@ mWaitForInput macro
     push dx
 
     ; reinit buffer
-    mov cx, 0feh
-    mov si, 2
+    mov cx, 100h
+    mov si, 0
     mov al, '$'
 
     reinit_loop:

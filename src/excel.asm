@@ -2,7 +2,7 @@ mDatasheetVariables macro
     columnHeader           db '      A      B      C      D      E      F      G      H      I      J      K', "$"
     promptIndicator        db ">> ", "$"
 
-    datasheet              dw 0fdh dup(-1)
+    datasheet              dw 0fdh dup(0)
     datasheetNumRows       equ 17
     datasheetNumCols       equ 0b
 
@@ -195,6 +195,7 @@ mOperations macro
 
         set_destination_cell_error:
             mPrint destinationCellError
+            mWaitForEnter
             jmp end_set_operation
 
         set_command_error:
@@ -214,7 +215,7 @@ mEvalCommand macro command
     
     local recognized, end
     lea di, command ; Load the command address
-    ; mov cx, sizeof command ; Load the command length
+    mov cx, sizeof command ; Load the command length
     
     ; Compare the input buffer with the command
     mCompareStrings
@@ -320,7 +321,6 @@ mCheckCellReference macro
 
     local cell_reference, no_cell_reference, end
 
-
     push bx
     push ax
     push si 
@@ -335,40 +335,35 @@ mCheckCellReference macro
 
     sub al, 'A' ; Convert to column index
 
+    mov dx, 0
+    mov dl, al ; Save the column index
+    mov [cellColReference], dl
 
-
-    ; Valid row
     inc si ; Skip the column
-    mov ah, [si] ; Load the second character
-    cmp ah, '1'
-    jl no_cell_reference
+    ; Valid row
+    mCheckNumberReference
+    cmp dx, 0
+    je no_cell_reference
 
-    cmp ah, '9'
-    jg no_cell_reference
+    ;TODO : VALIDATE ROW
 
-    sub ah, '1' ; Convert to row index
-
-    inc si ; Skip the row
+    mov [numberReference], bx ; restore the prev value of numberReference
+    dec ax ; Now in AX we have the row number in 0 based index
 
     ; Save the cell row/col
-    mov [cellRowReference], ah
-    mov [cellColReference], al
+    mov [cellRowReference], al
 
     ; Compute the cell index [col + row * numCols]
 
     ; save AH, AL
-    mov ax, 0
-    mov al, [cellRowReference]
-
     mov bx, 0
     mov bx, datasheetNumCols
 
     mul bx ; row * numCols
 
-    mov bx, 0
-    mov bl, [cellColReference]
-
-    add ax, bx ; row * numCols + col
+    mov dx, 0
+    mov dl, [cellColReference] ; col
+    add ax, dx ; row * numCols + col
 
     ; Because the datasheet is a 2 byte array, we need to multiply the index by 2
     mov bx, 2
@@ -403,7 +398,7 @@ endm
 ;            - 1 -> Number reference
 ;         ax - reference
 mCheckNumberReference macro
-    local num_reference, no_num_reference, end, negative, convert_number
+    local num_reference, no_num_reference, end, negative, convert_number, eval_digit
 
     push bx
     push di
@@ -428,7 +423,6 @@ mCheckNumberReference macro
         cmp al, '9'
         jg no_num_reference
 
-
         mov numberString[di], al ; Save the digit
 
         inc si ; Skip the digit
@@ -436,12 +430,20 @@ mCheckNumberReference macro
 
         ; Check if it is the end of the number (white space)
         mov al, [si] ; Load character
+        ; Check if it is the end of the string
+        cmp al, '$'
+        je convert_number
+
+        cmp al, 0dh
+        je convert_number
+
         cmp al, ' '
         je convert_number
 
         cmp di, 6 ; Destination String Max length
         jge no_num_reference
 
+        mPrintAddress si
         jmp eval_digit
 
     num_reference:
