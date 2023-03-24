@@ -135,6 +135,8 @@ endm
 
 mEvalPromt macro
     
+    jmp test_file ;!!!! TEST
+
     ; Wait for the user to input a command
     mWaitForInput 
     mPrint newLine
@@ -223,6 +225,7 @@ mOperations macro
         cmp dx, 1
         je import_file_error
 
+        test_file:
         ; Open and read the file
         mReadImportFile
         cmp dx, 1
@@ -479,10 +482,12 @@ mCheckNumberReference macro
         cmp al, ' '
         je convert_number
 
+        cmp al, ',' ; For CSV files
+        je convert_number
+
         cmp di, 6 ; Destination String Max length
         jge no_num_reference
 
-        mPrintAddress si
         jmp eval_digit
 
     num_reference:
