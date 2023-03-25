@@ -14,8 +14,6 @@ mFilesVariables macro
     columnRequestDelimiter db " : ", "$"
     noValidColumn db "No es una columna valida", 0dh, 0ah, "$"
 
-    testFileName db "test.csv ", "$" ; !!!!!!!!!
-
     insertColumnOrder db 0bh dup(0)
     lastColumnOrderIndex db 0
     lastInsertedRowNumber db 0
@@ -93,10 +91,8 @@ mReadImportFile macro
     push si
 
     ;  OPEN FILE
-    clc
     mov CX, 00
-    ; mov DX, offset filenameBuffer ; Filename
-    mov DX, offset testFileName ; !!!!!!!!
+    mov DX, offset filenameBuffer ; Filename
     mov AL, 00 ; Read only
     mov AH, 3dh ; Open
     int 21
@@ -187,6 +183,7 @@ mReadImportFile macro
 
     end:
         ; register restoration
+        pop si
         pop cx
         pop bx
         pop ax
@@ -213,6 +210,7 @@ mResetColumnOrder macro
     push di
     push ax
     push cx
+    push si
 
     ; Reset the column order
     mov cx, 0bh
@@ -249,6 +247,7 @@ mEvalColumn macro
 
     inc si ; Move to the first char
 
+    mov ax , 0
     mov al, [si]
     cmp al, 'A'
     jl error
@@ -258,18 +257,19 @@ mEvalColumn macro
 
     sub al, 'A' ; Convert to column index
 
-    mov bx, 0
-    mov bl, [lastColumnOrderIndex] ; ah is the last column order index
+    mov cx, 0
+    mov cl, [lastColumnOrderIndex] ; ah is the last column order index
 
-    cmp bl, 0bh ; If the last column order index is 11, then we have reached the maximum columns
+    cmp cl, 0bh ; If the last column order index is 11, then we have reached the maximum columns
     je error
 
-    mov di, bx ; di is now the last column order index
+    mov di, cx ; di is now the last column order index
 
     mov insertColumnOrder[di], al
 
-    inc bl
-    mov [lastColumnOrderIndex], bl ; Save the last column order index
+    mov ax, di
+    add ax, 1
+    mov [lastColumnOrderIndex], al ; Save the last column order index
 
     success:
         mov dx, 0
@@ -321,23 +321,27 @@ mInsertValues macro
             ; Compute the cell address
             mov ax, 0
             mov al, [lastColumnOrderIndex]
-            
             mov si, ax ; si is now the last column order index
-            mov ax, 0
-            mov al, insertColumnOrder[si] ; Column index
-            mov dx, ax
 
+            mov cx, 0
+            mov cl, insertColumnOrder[si] ; Column index
+            
             mov ax, 0
-            mov al, [lastInsertedRowNumber] ; Row index
+            mov al, [lastInsertedRowNumber] ; ROWS -> AX
 
-            mComputeDataSheetIndex ; Now in BX we have the datasheet index
+            mov bx, 0bh
+            mul bx ; ROWS * 11d
+
+            add ax, cx ; ROWS * 11d + COLS
+
+            ; Because the datasheet is a 2 byte array, we need to multiply the index by 2
+            mov bx, 2
+            mul bx ; (row * numCols + col) * 2
 
             ; Insert the value
+            mov si, ax ; si is now the address of the cell
             mov ax, [numberReference]
-            mov datasheet[BX], ax
-
-            mPrintDatasheet
-            mWaitForEnter
+            mov datasheet[si], ax
 
             pop si
             pop di 
@@ -354,6 +358,7 @@ mInsertValues macro
 
                 ; then we have a comma
                 ; move to the next column
+                mov ax, 0
                 mov al, [lastColumnOrderIndex]
                 inc al
                 mov [lastColumnOrderIndex], al
@@ -471,18 +476,30 @@ endm
 
 ; Entry:  DX  -> Col
 ;         AX  -> Row
-; return: BX  -> Datasheet index
+; return: AX  -> Datasheet index
 mComputeDataSheetIndex macro
-    mov bx, 0
-    mov bx, datasheetNumCols
 
+    mNumberToString ; ROWS
+    mPrint numberString
+    mWaitForEnter
+    mov bx, 0b
+   
     mul bx ; row * numCols
 
-    add ax, dx ; row * numCols + col
+    push ax
+    mov ax, cx
+    mNumberToString ; COLS
+    mPrint numberString
+    mWaitForEnter
+    pop ax
+
+    add ax, cx ; row * numCols + col
 
     ; Because the datasheet is a 2 byte array, we need to multiply the index by 2
     mov bx, 2
     mul bx ; (row * numCols + col) * 2
 
-    mov bx, ax
+    mNumberToString ; INDEX
+    mPrint numberString
+    mWaitForEnter
 endm

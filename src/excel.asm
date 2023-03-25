@@ -135,8 +135,6 @@ endm
 
 mEvalPromt macro
     
-    jmp test_file ;!!!! TEST
-
     ; Wait for the user to input a command
     mWaitForInput 
     mPrint newLine
