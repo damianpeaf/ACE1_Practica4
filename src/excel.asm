@@ -177,6 +177,11 @@ mEvalPromt macro
     cmp dx, 0
     je power_operation
 
+    ; Or
+    mEvalCommand commandOr
+    cmp dx, 0
+    je or_operation
+
     ; TODO: Rest of the commands
 
     ; EXIT
@@ -350,6 +355,16 @@ mOperations macro
         mov [returnReference], ax
         jmp end_operation
     
+  
+    or_operation:
+        mGenericCellOperation
+        ; Compute the or
+        or ax, dx
+
+        ; Save the result in the 'return' reference
+        mov [returnReference], ax
+        jmp end_operation
+
     operation_source_referece_error:
         mPrint sourceReferenceError
         mWaitForEnter
