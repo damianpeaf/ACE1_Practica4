@@ -61,9 +61,13 @@ mDatasheetVariables macro
     destinationReferenceError db "Error en la referencia de destino", "$"
     destinationCellError   db "Error en la celda de destino", "$"
     divideByZeroError      db "Error: Division entre cero", "$"
+    numberNotRepresentableError db "Error: Numero no representable", "$"
 
 
     debug                  db "!", "$"
+
+    maxPositiveReprestableNumber equ 7fffh ; 32767
+    maxNegativeReprestableNumber equ 8000h ; -32768
 
 endm
 
@@ -192,6 +196,11 @@ mEvalPromt macro
     cmp dx, 0
     je xor_operation
 
+    ; not
+    mEvalCommand commandNot
+    cmp dx, 0
+    je not_operation
+
     ; TODO: Rest of the commands
 
     ; EXIT
@@ -290,8 +299,7 @@ mOperations macro
         add ax, dx
 
         ; Save the result in the 'return' reference
-        mov [returnReference], ax
-        jmp end_operation
+        jmp save_result_in_return
 
     substract_operation: 
         mGenericCellOperation
@@ -299,8 +307,7 @@ mOperations macro
         sub ax, dx
 
         ; Save the result in the 'return' reference
-        mov [returnReference], ax
-        jmp end_operation
+        jmp save_result_in_return
 
     multiply_operation:
         mGenericCellOperation
@@ -308,8 +315,7 @@ mOperations macro
         mul dx
 
         ; Save the result in the 'return' reference
-        mov [returnReference], ax
-        jmp end_operation
+        jmp save_result_in_return
 
     divide_operation:
         mSkipWhiteSpaces
@@ -342,8 +348,7 @@ mOperations macro
         idiv bx
 
         ; Save the result in the 'return' reference
-        mov [returnReference], ax
-        jmp end_operation
+        jmp save_result_in_return
 
     power_operation:
         mGetFirstReferece
@@ -354,17 +359,22 @@ mOperations macro
         mov bx, ax ; Save the base in bx
         mov cx, dx ; Save the exponent in cx
         mov ax, 1 ; Set the result to 1
-        mov dx, 0 ; *
 
+        mov dx, 0 ; *
         power_loop:
             mul bx ; ax = ax * bx
+            
+            mCheckRepresentableNumber
+            cmp dx, 1
+            je number_not_representable_error
+
             dec cx
             jnz power_loop
 
+        ; Check if the result is representable
+
         ; Save the result in the 'return' reference
-        mov [returnReference], ax
-        jmp end_operation
-    
+        jmp save_result_in_return
   
     or_operation:
         mGenericCellOperation
@@ -372,8 +382,7 @@ mOperations macro
         or ax, dx
 
         ; Save the result in the 'return' reference
-        mov [returnReference], ax
-        jmp end_operation
+        jmp save_result_in_return
 
     and_operation:
         mGenericCellOperation
@@ -381,8 +390,7 @@ mOperations macro
         and ax, dx
 
         ; Save the result in the 'return' reference
-        mov [returnReference], ax
-        jmp end_operation
+        jmp save_result_in_return
 
     xor_operation:
         mGenericCellOperation
@@ -390,7 +398,33 @@ mOperations macro
         xor ax, dx
 
         ; Save the result in the 'return' reference
+        jmp save_result_in_return
+
+    save_result_in_return:
+        mCheckRepresentableNumber
+        cmp dx, 1
+        je number_not_representable_error
+
+        ; Save the result in the 'return' reference
         mov [returnReference], ax
+        jmp end_operation
+
+    not_operation:
+        mSkipWhiteSpaces
+    
+        mEvalReference
+        cmp dx, 0
+        je operation_source_referece_error
+
+        ; Compute the not
+        not ax
+
+        ; Save the result in the 'return' reference
+        jmp save_result_in_return
+
+    number_not_representable_error:
+        mPrint numberNotRepresentableError
+        mWaitForEnter
         jmp end_operation
 
     operation_source_referece_error:
@@ -736,5 +770,32 @@ mCheckNumberReference macro
     end:
         pop di
         pop bx
+
+endm
+
+; Description: Check if the result is a representable number
+; Input: ax - number to check
+; Output: dx - 0 -> Valid
+;            - 1 -> Invalid
+mCheckRepresentableNumber macro
+
+    local end, error
+
+    mov dx, 0
+    jo error
+
+    cmp ax, maxPositiveReprestableNumber
+    jg error
+
+    cmp ax, maxNegativeReprestableNumber
+    jl error
+
+    jmp end
+
+    error:
+        mov dx, 1
+        jmp end
+
+    end:
 
 endm
