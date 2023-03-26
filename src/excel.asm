@@ -71,6 +71,7 @@ mDatasheetVariables macro
 
 
     debug                  db "!", "$"
+    fillNumberRequest      db "Numero: ", "$"
 
     maxPositiveReprestableNumber equ 7fffh ; 32767
     maxNegativeReprestableNumber equ 8000h ; -32768
@@ -225,6 +226,11 @@ mEvalPromt macro
     mEvalCommand commandMax
     cmp dx, 0
     je max_operation
+
+    ; Fill
+    mEvalCommand commandFill
+    cmp dx, 0
+    je fill_operation
 
     ; TODO: Rest of the commands
 
@@ -528,6 +534,34 @@ mOperations macro
         ; Save the result in the 'return' reference
         jmp save_result_in_return
     
+    fill_operation:
+        mGenericRangeOperation
+
+        fill_loop:
+            mGetNextRangeCoord
+            
+            push si
+            push dx
+
+                request_number:
+                    mPrint fillNumberRequest
+                    mWaitForInput
+                    mPrint newLine
+                    lea si, commandBuffer ; Load the input buffer address
+                    add si, 2 ; Skip the max length and the current length
+                    mCheckNumberReference
+                    cmp dx, 0
+                    je request_number
+
+            pop dx
+            pop si
+            mov datasheet[si], ax
+
+            cmp dx, 0
+            je fill_loop
+        
+        jmp end_operation
+
     invalid_range_operation:
         mPrint invalidRangeError
         mWaitForEnter
