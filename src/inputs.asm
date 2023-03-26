@@ -9,11 +9,16 @@ endm
 ; Description: Waits for the user to press enter
 mWaitForEnter macro
     LOCAL press_enter
+
+    push ax
+
     press_enter:
         mov AH, 08h
         int 21h
         cmp AL, 0dh
         jne press_enter
+
+    pop ax
 endm
 
 

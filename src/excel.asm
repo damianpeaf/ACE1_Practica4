@@ -11,8 +11,13 @@ mDatasheetVariables macro
     returnReference        dw 1 ; Return reference, resultant number [*]
     cellRowReference       db 0 ; row of the cell reference    [0d - 22d] [0h - 16h]
     cellColReference       db 0 ; column of the cell reference [0d - 10d] [0h - 0ah]
+
+    auxCellRowReference       db 0 ; row of the cell reference    [0d - 22d] [0h - 16h]
+    auxCellColReference       db 0 ; column of the cell reference [0d - 10d] [0h - 0ah]
+
     cellIndexReference     dw 0 ; cell index of the cell reference
     numberReference        dw 0 ; Sign number reference 
+    auxReference           dw 0 ; Auxiliar reference
 
     ; ---- Commands ----
 
@@ -62,6 +67,7 @@ mDatasheetVariables macro
     destinationCellError   db "Error en la celda de destino", "$"
     divideByZeroError      db "Error: Division entre cero", "$"
     numberNotRepresentableError db "Error: Numero no representable", "$"
+    invalidRangeError      db "Error: Rango invalido", "$"
 
 
     debug                  db "!", "$"
@@ -200,6 +206,11 @@ mEvalPromt macro
     mEvalCommand commandNot
     cmp dx, 0
     je not_operation
+
+    ; Average
+    mEvalCommand commandAverage
+    cmp dx, 0
+    je average_operation
 
     ; TODO: Rest of the commands
 
@@ -422,6 +433,36 @@ mOperations macro
         ; Save the result in the 'return' reference
         jmp save_result_in_return
 
+    average_operation: 
+        mGenericRangeOperation
+        mRangeDirecton
+        mov dx, [rangeType]
+        cmp dx, 0
+
+        mov ax, 0 ; sum
+        average_loop:
+            push ax ; Save the sum in the stack
+            mGetNextRangeCoord
+            pop ax ; Restore the sum
+            add ax, datasheet[si]
+
+            cmp dx, 0
+            je average_loop
+
+        mov bx, [rangeIterations]
+        inc bx
+
+        div bx
+
+        ; Save the result in the 'return' reference
+        jmp save_result_in_return
+    
+
+    invalid_range_operation:
+        mPrint invalidRangeError
+        mWaitForEnter
+        jmp end_operation
+
     number_not_representable_error:
         mPrint numberNotRepresentableError
         mWaitForEnter
@@ -459,7 +500,7 @@ mGenericCellOperation macro
     mEvalReference
     cmp dx, 0
     je operation_source_referece_error
-    push ax ; Save the source reference
+    mov [auxReference], ax ; Save the source reference
 
     mSkipWhiteSpaces
     mEvalCommand commandSeparator
@@ -473,7 +514,40 @@ mGenericCellOperation macro
     je operation_destination_referece_error
 
     mov dx, ax ; Save the second number in dx
-    pop ax ; Restore the first number in ax
+    mov ax, [auxReference] ; Restore the first number in ax
+endm
+
+; Description: Get the 'source' and 'destination' references
+; Return: bx - source reference [col, row], dx - destination reference [col, row]
+mGenericRangeOperation macro 
+
+    mSkipWhiteSpaces
+    mEvalCommand commandFrom
+    mSkipWhiteSpaces
+
+    mCheckCellReference
+    cmp dx, 0
+    je operation_source_referece_error
+    mov dx, 0
+
+    mov dl, [cellRowReference]
+    mov dh, [cellColReference]
+
+    push dx
+
+    mSkipWhiteSpaces
+    mEvalCommand commandTo
+    mSkipWhiteSpaces
+
+    mCheckCellReference
+    cmp dx, 0
+    je operation_destination_referece_error
+
+    mov dx, 0
+    mov dl, [cellRowReference]
+    mov dh, [cellColReference]
+    pop bx
+
 endm
 
 ; Description: Get the first reference

@@ -11,6 +11,7 @@ include inputs.asm
 include strings.asm
 include excel.asm
 include files.asm
+include range.asm
 
 .model small
 .stack
@@ -35,6 +36,9 @@ mInputVariables
 
 ; - FILES -
 mFilesVariables
+
+; - RANGE -
+mRangeVariables
 
 .code
 
