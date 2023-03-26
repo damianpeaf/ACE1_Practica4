@@ -151,6 +151,11 @@ mEvalPromt macro
     cmp dx, 0
     je import_file
 
+    ; Sum
+    mEvalCommand commandSum
+    cmp dx, 0
+    je sum_operation
+
     ; TODO: Rest of the commands
 
     ; EXIT
@@ -242,11 +247,64 @@ mOperations macro
         end_import_file:
             jmp datasheet_sequence
 
+
+    sum_operation:
+        mGenericCellOperation
+        ; Compute the sum
+        add ax, dx
+
+        ; Save the result in the 'return' reference
+        mov [returnReference], ax
+        jmp end_operation
+
+    operation_source_referece_error:
+        mPrint sourceReferenceError
+        mWaitForEnter
+        jmp end_operation
+
+    operation_destination_referece_error:
+        mPrint destinationReferenceError
+        mWaitForEnter
+        jmp end_operation
+
+    operation_invalid_command:
+        mPrint notRecognized
+        mWaitForEnter
+        jmp end_operation
+
+    end_operation:
+        jmp datasheet_sequence
 endm
 
+; Description: Get the 'source' and 'destination' references
+; Return: ax - source reference, dx - destination reference
+mGenericCellOperation macro
+    mSkipWhiteSpaces
+    
+    mEvalReference
+    cmp dx, 0
+    je operation_source_referece_error
+    push ax ; Save the source reference
+
+    mSkipWhiteSpaces
+    mEvalCommand commandSeparator
+    cmp dx, 1
+    je operation_invalid_command
+
+    mSkipWhiteSpaces
+
+    mEvalReference ; Evaluate the second number
+    cmp dx, 0
+    je operation_destination_referece_error
+
+    mov dx, ax ; Save the second number in dx
+    pop ax ; Restore the first number in ax
+endm
 
 ; Description: Evaluates if the input buffer contains the command
 ; Input: si - input buffer address
+; Return: dx - 0 -> command recognized
+;            - 1 -> command not recognized
 mEvalCommand macro command
     
     local recognized, end
