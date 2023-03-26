@@ -23,7 +23,7 @@ mDatasheetVariables macro
     
     commandSum             db "SUMA"
     commandSubstract       db "RESTA"
-    commandMultiply        db "MULTIPLICAR"
+    commandMultiply        db "MULTIPLICACION"
     commandDivide          db "DIVIDIR"
     commandPower           db "POTENCIA"
 
@@ -161,6 +161,11 @@ mEvalPromt macro
     cmp dx, 0
     je substract_operation
 
+    ; Multiply
+    mEvalCommand commandMultiply
+    cmp dx, 0
+    je multiply_operation
+
     ; TODO: Rest of the commands
 
     ; EXIT
@@ -266,6 +271,15 @@ mOperations macro
         mGenericCellOperation
         ; Compute the substract
         sub ax, dx
+
+        ; Save the result in the 'return' reference
+        mov [returnReference], ax
+        jmp end_operation
+
+    multiply_operation:
+        mGenericCellOperation
+        ; Compute the multiply
+        mul dx
 
         ; Save the result in the 'return' reference
         mov [returnReference], ax
