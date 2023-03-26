@@ -444,11 +444,13 @@ mOperations macro
             push ax ; Save the sum in the stack
             mGetNextRangeCoord
             pop ax ; Restore the sum
-            add ax, datasheet[si]
+            mov bx, datasheet[si]
+            add ax, bx
 
             cmp dx, 0
             je average_loop
 
+        mov dx, 0 ; *
         mov bx, [rangeIterations]
         inc bx
 

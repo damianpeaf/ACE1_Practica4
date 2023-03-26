@@ -110,17 +110,20 @@ mGetNextRangeCoord macro
     local compute_address, next_coords, horizontal, vertical, end, right_horizontal, left_horizontal, down_vertical, up_vertical, end_cycle, save
 
     compute_address:
+        mov ax, 0 ; Clear the register
+        mov bx, 0 ; Clear the register
+        mov cx, 0 ; Clear the register
+        mov dx, 0 ; Clear the register
+
         mov ax, [auxCoords]
-
-        mov dl, ah ; COLS
-        
+        mov cl, ah ; COLS
         mov ah, 0
-        mov dh, 0
 
+        mov dx, 0
         mov bx, 0bh
         mul bx ; ROWS * 11d
 
-        add ax, dx ; ROWS * 11d + COLS
+        add ax, cx ; ROWS * 11d + COLS
 
         ; Because the datasheet is a 2 byte array, we need to multiply the index by 2
         mov bx, 2
@@ -129,7 +132,14 @@ mGetNextRangeCoord macro
         push ax ; Save the address
 
     next_coords:
-        mov ax, [auxCoords] ; [col, row]
+        mov ax, 0 ; Clear the register
+        mov bx, 0 ; Clear the register
+        mov cx, 0 ; Clear the register
+        mov dx, 0 ; Clear the register
+
+        mov ax, [auxCoords]
+        mov cl, ah ; CX = COLS
+        mov ah, 0 ; AX = ROWS
 
         ; Horizontal
         cmp [rangeType], 1
@@ -147,11 +157,11 @@ mGetNextRangeCoord macro
             je left_horizontal
         
         right_horizontal:
-            inc ah ; same row, next column
+            inc cx ; same row, next column
             jmp save
 
         left_horizontal:
-            dec al ; same row, previous column
+            dec cx ; same row, previous column
             jmp save
 
         vertical:
@@ -162,17 +172,16 @@ mGetNextRangeCoord macro
             je up_vertical
 
         down_vertical:
-            inc al ; next row, same column
+            inc ax ; next row, same column
             jmp save
 
         up_vertical:
-            dec ah ; previous row, same column
+            dec ax ; previous row, same column
             jmp save
 
     save:
+        mov ah, cl ; COLS
         mov [auxCoords], ax ; Update the auxiliar coords
-
-        pop si ; Get the address
 
         mov cx, [currentIteration] 
         inc cx
@@ -188,6 +197,7 @@ mGetNextRangeCoord macro
             mov dx, 1 ; End of range
 
     end:
+        pop si ; Get the address
 
 
 endm
