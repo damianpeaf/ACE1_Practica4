@@ -25,7 +25,7 @@ mDatasheetVariables macro
     commandSubstract       db "RESTA"
     commandMultiply        db "MULTIPLICACION"
     commandDivide          db "DIVIDIR"
-    commandPower           db "POTENCIA"
+    commandPower           db "POTENCIAR"
 
     ; Logical operations
     commandOr              db "OLOGICO"
@@ -171,6 +171,11 @@ mEvalPromt macro
     mEvalCommand commandDivide
     cmp dx, 0
     je divide_operation
+
+    ; Power
+    mEvalCommand commandPower
+    cmp dx, 0
+    je power_operation
 
     ; TODO: Rest of the commands
 
@@ -325,6 +330,26 @@ mOperations macro
         mov [returnReference], ax
         jmp end_operation
 
+    power_operation:
+        mGetFirstReferece
+        mEvalCommand commandExponent
+        mGetSecondReferece
+
+        ; Compute the power
+        mov bx, ax ; Save the base in bx
+        mov cx, dx ; Save the exponent in cx
+        mov ax, 1 ; Set the result to 1
+        mov dx, 0 ; *
+
+        power_loop:
+            mul bx ; ax = ax * bx
+            dec cx
+            jnz power_loop
+
+        ; Save the result in the 'return' reference
+        mov [returnReference], ax
+        jmp end_operation
+    
     operation_source_referece_error:
         mPrint sourceReferenceError
         mWaitForEnter
@@ -364,6 +389,30 @@ mGenericCellOperation macro
     cmp dx, 1
     je operation_invalid_command
 
+    mSkipWhiteSpaces
+
+    mEvalReference ; Evaluate the second number
+    cmp dx, 0
+    je operation_destination_referece_error
+
+    mov dx, ax ; Save the second number in dx
+    pop ax ; Restore the first number in ax
+endm
+
+; Description: Get the first reference
+mGetFirstReferece macro
+    mSkipWhiteSpaces
+    
+    mEvalReference
+    cmp dx, 0
+    je operation_source_referece_error
+    push ax ; Save the source reference
+    mSkipWhiteSpaces
+    
+endm
+
+; Description: Get the second reference, after the separator
+mGetSecondReferece macro
     mSkipWhiteSpaces
 
     mEvalReference ; Evaluate the second number
