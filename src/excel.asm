@@ -152,6 +152,8 @@ mEvalPromt macro
     lea si, commandBuffer ; Load the input buffer address
     add si, 2 ; Skip the max length and the current length
 
+    ; --- Cell operations ---
+
     ; SET CELL
     mEvalCommand commandSetCell
     cmp dx, 0
@@ -207,10 +209,17 @@ mEvalPromt macro
     cmp dx, 0
     je not_operation
 
+    ; --- Range operations ---
+
     ; Average
     mEvalCommand commandAverage
     cmp dx, 0
     je average_operation
+
+    ; Min
+    mEvalCommand commandMin
+    cmp dx, 0
+    je min_operation
 
     ; TODO: Rest of the commands
 
@@ -435,9 +444,6 @@ mOperations macro
 
     average_operation: 
         mGenericRangeOperation
-        mRangeDirecton
-        mov dx, [rangeType]
-        cmp dx, 0
 
         mov ax, 0 ; sum
         average_loop:
@@ -460,6 +466,35 @@ mOperations macro
         jmp save_result_in_return
     
 
+    min_operation:
+        mGenericRangeOperation
+
+        mGetNextRangeCoord
+        mov ax, datasheet[si] ; Save the first number in ax
+        cmp dx, 1 ; Check if the range is empty
+        je end_min
+
+        min_loop:
+            push ax ; Save the min in the stack
+            mGetNextRangeCoord
+            mov bx, datasheet[si]
+            pop ax ; Restore the min
+            cmp ax, bx
+            jle no_change_min
+            
+            change_min:
+                mov ax, bx
+
+            no_change_min:
+
+            cmp dx, 0
+            je min_loop
+
+        end_min:
+        ; Save the result in the 'return' reference
+        jmp save_result_in_return
+
+    
     invalid_range_operation:
         mPrint invalidRangeError
         mWaitForEnter
@@ -549,6 +584,11 @@ mGenericRangeOperation macro
     mov dl, [cellRowReference]
     mov dh, [cellColReference]
     pop bx
+
+    mRangeDirecton
+    mov dx, [rangeType]
+    cmp dx, 0
+    je invalid_range_operation
 
 endm
 
