@@ -187,6 +187,11 @@ mEvalPromt macro
     cmp dx, 0
     je and_operation
 
+    ; xor
+    mEvalCommand commandXor
+    cmp dx, 0
+    je xor_operation
+
     ; TODO: Rest of the commands
 
     ; EXIT
@@ -374,6 +379,15 @@ mOperations macro
         mGenericCellOperation
         ; Compute the and
         and ax, dx
+
+        ; Save the result in the 'return' reference
+        mov [returnReference], ax
+        jmp end_operation
+
+    xor_operation:
+        mGenericCellOperation
+        ; Compute the xor
+        xor ax, dx
 
         ; Save the result in the 'return' reference
         mov [returnReference], ax
