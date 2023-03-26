@@ -182,6 +182,11 @@ mEvalPromt macro
     cmp dx, 0
     je or_operation
 
+    ; And
+    mEvalCommand commandAnd
+    cmp dx, 0
+    je and_operation
+
     ; TODO: Rest of the commands
 
     ; EXIT
@@ -360,6 +365,15 @@ mOperations macro
         mGenericCellOperation
         ; Compute the or
         or ax, dx
+
+        ; Save the result in the 'return' reference
+        mov [returnReference], ax
+        jmp end_operation
+
+    and_operation:
+        mGenericCellOperation
+        ; Compute the and
+        and ax, dx
 
         ; Save the result in the 'return' reference
         mov [returnReference], ax
