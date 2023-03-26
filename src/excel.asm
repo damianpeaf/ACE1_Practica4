@@ -60,6 +60,7 @@ mDatasheetVariables macro
     sourceReferenceError   db "Error en la referencia de origen", "$"
     destinationReferenceError db "Error en la referencia de destino", "$"
     destinationCellError   db "Error en la celda de destino", "$"
+    divideByZeroError      db "Error: Division entre cero", "$"
 
 
     debug                  db "!", "$"
@@ -165,6 +166,11 @@ mEvalPromt macro
     mEvalCommand commandMultiply
     cmp dx, 0
     je multiply_operation
+
+    ; Divide
+    mEvalCommand commandDivide
+    cmp dx, 0
+    je divide_operation
 
     ; TODO: Rest of the commands
 
@@ -285,6 +291,40 @@ mOperations macro
         mov [returnReference], ax
         jmp end_operation
 
+    divide_operation:
+        mSkipWhiteSpaces
+        
+            mEvalReference
+            cmp dx, 0
+            je operation_source_referece_error
+            push ax ; Save the source reference
+
+            mSkipWhiteSpaces
+            mEvalCommand commandBetween
+            cmp dx, 1
+            je operation_invalid_command
+
+            mSkipWhiteSpaces
+
+            mEvalReference ; Evaluate the second number
+            cmp dx, 0
+            je operation_destination_referece_error
+
+            mov bx, ax ; Save the second number in bx
+            pop ax ; Restore the first number in ax
+        
+        cmp bx, 0
+        je divide_by_zero_error
+
+        mov dx, 0 ; *
+        ; Compute the divide
+        cwd ; dx:ax = ax
+        idiv bx
+
+        ; Save the result in the 'return' reference
+        mov [returnReference], ax
+        jmp end_operation
+
     operation_source_referece_error:
         mPrint sourceReferenceError
         mWaitForEnter
@@ -297,6 +337,11 @@ mOperations macro
 
     operation_invalid_command:
         mPrint notRecognized
+        mWaitForEnter
+        jmp end_operation
+
+    divide_by_zero_error: 
+        mPrint divideByZeroError
         mWaitForEnter
         jmp end_operation
 
