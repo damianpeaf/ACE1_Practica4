@@ -156,6 +156,11 @@ mEvalPromt macro
     cmp dx, 0
     je sum_operation
 
+    ; Substract
+    mEvalCommand commandSubstract
+    cmp dx, 0
+    je substract_operation
+
     ; TODO: Rest of the commands
 
     ; EXIT
@@ -252,6 +257,15 @@ mOperations macro
         mGenericCellOperation
         ; Compute the sum
         add ax, dx
+
+        ; Save the result in the 'return' reference
+        mov [returnReference], ax
+        jmp end_operation
+
+    substract_operation: 
+        mGenericCellOperation
+        ; Compute the substract
+        sub ax, dx
 
         ; Save the result in the 'return' reference
         mov [returnReference], ax
