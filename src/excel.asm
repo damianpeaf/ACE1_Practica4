@@ -221,6 +221,11 @@ mEvalPromt macro
     cmp dx, 0
     je min_operation
 
+    ; Max
+    mEvalCommand commandMax
+    cmp dx, 0
+    je max_operation
+
     ; TODO: Rest of the commands
 
     ; EXIT
@@ -494,6 +499,34 @@ mOperations macro
         ; Save the result in the 'return' reference
         jmp save_result_in_return
 
+    
+    max_operation:
+        mGenericRangeOperation
+
+        mGetNextRangeCoord
+        mov ax, datasheet[si] ; Save the first number in ax
+        cmp dx, 1 ; Check if the range is empty
+        je end_max
+
+        max_loop:
+            push ax ; Save the max in the stack
+            mGetNextRangeCoord
+            mov bx, datasheet[si]
+            pop ax ; Restore the max
+            cmp ax, bx
+            jge no_change_max
+            
+            change_max:
+                mov ax, bx
+
+            no_change_max:
+
+            cmp dx, 0
+            je max_loop
+
+        end_max:
+        ; Save the result in the 'return' reference
+        jmp save_result_in_return
     
     invalid_range_operation:
         mPrint invalidRangeError
