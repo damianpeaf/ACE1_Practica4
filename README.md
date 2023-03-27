@@ -3,9 +3,3 @@
 ## Práctica 4 - Arquitectura de computadores y ensambladores 1
 
 `Damián Ignacio Peña Afre 202110568`
-
-### Índice
-
-- Código fuente
-- Manual Técnico
-- Manual de Usuario
