@@ -8,7 +8,7 @@ mDatasheetVariables macro
 
     ; ---- References ----
     ; NOTE: Valid numbers are from [-32767 - 32767]
-    returnReference        dw 1 ; Return reference, resultant number [*]
+    returnReference        dw 0 ; Return reference, resultant number [*]
     cellRowReference       db 0 ; row of the cell reference    [0d - 22d] [0h - 16h]
     cellColReference       db 0 ; column of the cell reference [0d - 10d] [0h - 0ah]
 

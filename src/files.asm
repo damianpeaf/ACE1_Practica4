@@ -49,6 +49,9 @@ mFilesVariables macro
     dateDelimiter db "/"
     hourDelimiter db ":"
 
+    exportColumn dw 0
+    exportRow dw 0
+
 endm
 
 
@@ -780,7 +783,7 @@ endm
 
 mWriteDatasheet macro
 
-    local headers_loop, end_headers_loop,write_header
+    local headers_loop, end_headers_loop,write_header, next_header, write_row, write_cell, next_row, data_end 
 
     ; Table start
     mov bx, [filehandle]
@@ -796,10 +799,6 @@ mWriteDatasheet macro
     headers_loop:
         
         mWriteTag tdOpen
-
-        mPrintAddress si
-        mWaitForEnter
-
         ; Write the header
         write_header:
             mov al, [si]
@@ -829,6 +828,84 @@ mWriteDatasheet macro
     end_headers_loop:
     mWriteTag trClose
 
+    ; Write the data
+    mov [exportRow], 0
+    mov ax, 0
+    mov al, [cellColReference]
+    mov [exportColumn], ax
+
+    write_row:
+
+        mov ax, [exportRow]
+        cmp ax, 17h
+        je data_end
+
+        mWriteTag trOpen
+
+        write_cell:
+
+            mWriteTag tdOpen
+
+            mov ax, [exportRow]
+            mov cx, [exportColumn]
+
+            ; AX -> ROWS ; CX -> COLS
+            mov bx, 0bh
+            mul bx ; ROWS * 11d
+
+            add ax, cx ; ROWS * 11d + COLS
+
+            ; Because the datasheet is a 2 byte array, we need to multiply the index by 2
+            mov bx, 2
+            mul bx ; (row * numCols + col) * 2
+
+            mov si, ax
+            mov ax, datasheet[si]
+            mWrite6DigitNumber
+    
+            mWriteTag tdClose
+
+            mov ax, [exportColumn]
+            inc ax
+            mov [exportColumn], ax
+
+            ; NEXT COLUMN
+
+            mov bx, 0
+            mov bl, [cellColReference] ; initial column
+            mov dx, [numberReference]
+            mov ax, [exportColumn]
+
+            add bx, dx ; initial column + number of columns
+
+            cmp ax, bx ;
+            jge next_row ; if ax >= bx, next row
+
+            jmp write_cell
+
+        next_row:
+            mov ax, [exportRow]
+            inc ax
+            mov [exportRow], ax
+
+            ; Reset column
+            mov ax, 0
+            mov al, [cellColReference]
+            mov [exportColumn], ax
+
+            mWriteTag trClose
+
+            jmp write_row
+
+    data_end:
+    ; Table end
+
+    mov bx, [filehandle]
+    mov cx, sizeof tableFooter
+    lea dx, tableFooter
+    mov ah, 40h
+    int 21h
+
 endm
 
 mWriteTag macro tag
@@ -845,6 +922,16 @@ mWriteChar macro char
     mov bx, [filehandle]
     mov cx, 1
     mov dx, offset charBuffer
+    mov ah, 40h
+    int 21h
+endm
+
+; Put in ax the number to write
+mWrite6DigitNumber macro number
+    mNumberToString
+    mov bx, [filehandle]
+    mov cx, 6
+    lea dx, numberString
     mov ah, 40h
     int 21h
 endm
