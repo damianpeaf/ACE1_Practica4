@@ -1,7 +1,9 @@
 mInputVariables macro
 
 commandBuffer db 100h dup('$')
-commandEnd dw '$'
+comamandEnd dw '$'
+charValue db 0
+charEnd db '$'
 
 endm
 
@@ -94,4 +96,22 @@ mSkipUntilWhiteSpaces macro
         inc si
     end:
         pop ax
+endm
+
+
+mPrintChar macro char
+
+    push ax
+    push si
+    push dx
+    
+    mov [charValue], char
+    mov [charEnd], '$'
+
+    mPrint charValue
+
+    pop dx
+    pop si
+    pop ax
+
 endm

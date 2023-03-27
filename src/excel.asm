@@ -12,8 +12,8 @@ mDatasheetVariables macro
     cellRowReference       db 0 ; row of the cell reference    [0d - 22d] [0h - 16h]
     cellColReference       db 0 ; column of the cell reference [0d - 10d] [0h - 0ah]
 
-    auxCellRowReference       db 0 ; row of the cell reference    [0d - 22d] [0h - 16h]
-    auxCellColReference       db 0 ; column of the cell reference [0d - 10d] [0h - 0ah]
+    auxCellRowReference    db 0 ; row of the cell reference    [0d - 22d] [0h - 16h]
+    auxCellColReference    db 0 ; column of the cell reference [0d - 10d] [0h - 0ah]
 
     cellIndexReference     dw 0 ; cell index of the cell reference
     numberReference        dw 0 ; Sign number reference 
@@ -68,10 +68,12 @@ mDatasheetVariables macro
     divideByZeroError      db "Error: Division entre cero", "$"
     numberNotRepresentableError db "Error: Numero no representable", "$"
     invalidRangeError      db "Error: Rango invalido", "$"
-
+    invalidNumberError     db "Error: Numero invalido", "$"
+    exportFileError        db "Error: No se pudo exportar el archivo", "$"
 
     debug                  db "!", "$"
     fillNumberRequest      db "Numero: ", "$"
+    exportFileSuccess     db "Archivo exportado exitosamente", "$"
 
     maxPositiveReprestableNumber equ 7fffh ; 32767
     maxNegativeReprestableNumber equ 8000h ; -32768
@@ -232,7 +234,10 @@ mEvalPromt macro
     cmp dx, 0
     je fill_operation
 
-    ; TODO: Rest of the commands
+    ; Export
+    mEvalCommand commandExport
+    cmp dx, 0
+    je export_file
 
     ; EXIT
     mEvalCommand commandExit
@@ -551,7 +556,7 @@ mOperations macro
                     add si, 2 ; Skip the max length and the current length
                     mCheckNumberReference
                     cmp dx, 0
-                    je request_number
+                    je number_error
 
             pop dx
             pop si
@@ -561,7 +566,54 @@ mOperations macro
             je fill_loop
         
         jmp end_operation
+        
+        number_error:
+            mPrint invalidNumberError
+            mPrint newLine
+            mWaitForEnter
+            jmp request_number
 
+    export_file: 
+        mSkipWhiteSpaces
+
+        mCheckNumberReference
+        cmp dx, 0
+        je operation_source_referece_error
+
+        mSkipWhiteSpaces
+
+        mEvalCommand commandFrom
+        cmp dx, 1
+        je operation_invalid_command
+
+        mSkipWhiteSpaces
+        
+        mCheckColumnReference
+        cmp dx, 0
+        je operation_source_referece_error
+
+        mSkipWhiteSpaces
+
+        mEvalCommand commandFileDestination
+        cmp dx, 1
+        je operation_invalid_command
+
+        mSkipWhiteSpaces
+
+        mGetFileName
+
+        ; Export the file
+        mExportFile
+        cmp dx, 1
+        je export_file_error
+        
+        mPrint exportFileSuccess
+        jmp end_operation
+
+    export_file_error:
+        mPrint exportFileError
+        mWaitForEnter
+        jmp end_operation
     invalid_range_operation:
         mPrint invalidRangeError
         mWaitForEnter
@@ -626,7 +678,11 @@ endm
 mGenericRangeOperation macro 
 
     mSkipWhiteSpaces
+    
     mEvalCommand commandFrom
+    cmp dx, 1
+    je operation_invalid_command
+
     mSkipWhiteSpaces
 
     mCheckCellReference
@@ -640,7 +696,11 @@ mGenericRangeOperation macro
     push dx
 
     mSkipWhiteSpaces
+
     mEvalCommand commandTo
+    cmp dx, 1
+    je operation_invalid_command
+
     mSkipWhiteSpaces
 
     mCheckCellReference
@@ -980,5 +1040,54 @@ mCheckRepresentableNumber macro
         jmp end
 
     end:
+
+endm
+
+; Description: Evaluates if the input buffer contains a column reference [Column]
+; Input: si - input buffer address. [MODIFICATES] if it is a column reference
+;                                   [NO MODIFICATION] if it is not a column reference
+
+; Output: dx - 0 -> invalid reference
+;            - 1 -> Column reference
+;         ax - reference
+mCheckColumnReference macro
+
+    local column_reference, no_column_reference, end
+
+    push bx
+    push ax
+    push si 
+
+    ; Valid column
+    mov ax, 0
+    mov al, [si] ; Load the first character
+    cmp al, 'A'
+    jl no_column_reference
+
+    cmp al, 'K'
+    jg no_column_reference
+
+    sub al, 'A' ; Convert to column index
+
+    mov dx, 0
+    mov dl, al ; Save the column index
+    mov [cellColReference], dl
+
+    inc si ; Skip the column
+
+    column_reference:
+        mov dx, 1
+        pop ax ; Restore prev value SI on AX, modify SI
+        pop ax ; Restore prev value AX on AX, modify AX
+        jmp end
+
+    no_column_reference:
+        mov dx, 0
+        pop si
+        pop ax
+        jmp end
+
+    end:
+        pop bx
 
 endm

@@ -11,6 +11,7 @@ mFilesVariables macro
     selectedFile db "Archvivo seleccionado: ", "$"
 
     columnRequest db "Columna para ", "$"
+    headerRequest db "Encabezado para ", "$"
     columnRequestDelimiter db " : ", "$"
     noValidColumn db "No es una columna valida", 0dh, 0ah, "$"
 
@@ -19,6 +20,35 @@ mFilesVariables macro
     lastInsertedRowNumber db 0
     insertNumberBuffer db 100h dup(0)
     breakInsertLoop db 0
+
+    charBuffer db 0
+    charBufferEnd db "$"
+
+    ; Html variables
+
+    pageHeader db "<!DOCTYPE html>", 0ah, "<html>", 0ah, "<head>", 0ah, "<title>Data Sheet</title>", 0ah, "</head>", 0ah, "<body>", 0ah
+
+    dateHeader db "<h1> Fecha de generacion: "
+    dateFooter db "</h1>", 0ah
+
+    hourHeader db "<h2> Hora de generacion: "
+    hourFooter db "</h2>", 0ah
+
+    tableHeader db "<table border='1'>", 0ah
+
+    trOpen db "<tr>", 0ah
+    trClose db "</tr>", 0ah
+
+    tdOpen db "<td>"
+    tdClose db "</td>", 0ah
+
+    tableFooter db "</table>", 0ah
+
+    pageFooter db "</body>", 0ah, "</html>", 0ah
+
+    dateDelimiter db "/"
+    hourDelimiter db ":"
+
 endm
 
 
@@ -75,6 +105,7 @@ mGetFileName macro
         pop di
 endm
 
+; --------------------------------- IMPORT FILE ---------------------------------
 
 ; Description: Open a file for reading
 ; Parameters:  filenameBuffer - The filename of the file to open
@@ -473,33 +504,347 @@ mExtractLineFromCSV macro
 
 endm
 
+; ---------------------------------------- EXPORT FILE ----------------------------------------
 
-; Entry:  DX  -> Col
-;         AX  -> Row
-; return: AX  -> Datasheet index
-mComputeDataSheetIndex macro
+; Description: Export the datasheet to a .htm file
+; Input: [1] number reference, [2] Column reference, [3] Filename buffer
+; Return: dx = 0 if success, dx = 1 if error. If success create the file 
+mExportFile macro 
 
-    mNumberToString ; ROWS
-    mPrint numberString
-    mWaitForEnter
-    mov bx, 0b
-   
-    mul bx ; row * numCols
+    local error, success, end, invalid_range, request_headers_loop, open_file_error, close_file
 
+    ; Valid range
+    mov ax, [numberReference]
+    mov dx, 0
+    mov dl, [cellColReference]
+
+    cmp ax, 0
+    jl invalid_range
+
+    dec ax
+
+    add ax, dx
+    cmp ax, 0ah
+    jg error
+
+    ; Save headers
+    mResetFileReadBuffer ; just for reuse the buffer
+
+    mov cx, [numberReference]
+    mov dl, [cellColReference]
+    add dl, "A"
+    lea di, filereadbuffer
+    request_headers_loop:
+
+        mPrint headerRequest
+        mPrintChar dl
+        mPrint columnRequestDelimiter
+
+        mGetHeader
+        mPrint newLine
+
+        inc dl
+
+        dec cx
+        jnz request_headers_loop
+
+
+    ; Create file
+    mov cx, 0 ; Read-only
+    mov dx, offset filenameBuffer
+    mov ah, 3ch
+    int 21h
+    jc error
+
+    mov [filehandle], ax
+
+    ; Write html start
+    mWriteHtmlStart
+    
+    ; Write the hour and date
+    mWriteDateAndHour
+
+    ; Write the datasheet
+    mWriteDatasheet
+
+    ; Write html end
+    mWriteHtmlEnd
+
+    ; Close file
+    jmp success
+
+    open_file_error:
+        mov dx, 1
+        jmp close_file
+
+    close_file:
+        push ax
+        push bx
+
+        mov bx, [filehandle]
+        mov ah, 3eh
+        int 21h
+
+        pop bx
+        pop ax
+        jmp end
+
+    success:
+        mov dx, 0
+        jmp close_file
+
+    invalid_range:
+        mPrint invalidRangeError
+        mPrint newLine
+        jmp error
+
+    error:
+        mov dx, 1
+        jmp end
+
+    end:
+
+endm
+
+
+
+mGetHeader macro 
+
+    local copy_char, end
+
+    push si
     push ax
-    mov ax, cx
-    mNumberToString ; COLS
-    mPrint numberString
-    mWaitForEnter
+
+    mWaitForInput
+    lea si, commandBuffer
+    add si, 2
+
+    copy_char:
+        mov al, [si]
+
+        ; Check end of command buffer
+        cmp al, 0
+        je end
+
+        cmp al, 0ah ; LF
+        je end
+
+        cmp al, 0dh ; CR
+        je end
+
+        cmp al, '$'
+        je end
+
+        mov [di], al
+        inc di
+        inc si
+        jmp copy_char
+
+
+    end:
+
+    inc di ; left $ beetwen headers
+
     pop ax
+    pop si
 
-    add ax, cx ; row * numCols + col
+endm
 
-    ; Because the datasheet is a 2 byte array, we need to multiply the index by 2
-    mov bx, 2
-    mul bx ; (row * numCols + col) * 2
 
-    mNumberToString ; INDEX
-    mPrint numberString
-    mWaitForEnter
+mWriteHtmlStart macro 
+
+    mov bx, [filehandle]
+    mov cx, sizeof pageHeader
+    lea dx, pageHeader
+    mov ah, 40h
+    int 21h
+
+endm
+
+mWriteHtmlEnd macro 
+
+    mov bx, [filehandle]
+    mov cx, sizeof pageFooter
+    lea dx, pageFooter
+    mov ah, 40h
+    int 21h
+
+endm
+
+mWriteDateAndHour macro 
+
+    ; ----- DATE -----
+    mov bx, [filehandle]
+    mov cx, sizeof dateHeader
+    lea dx, dateHeader
+    mov ah, 40h
+    int 21h
+
+    mov ah, 2ah
+    int 21h
+    ; DL = day, DH = month, CX = year
+
+    ; Write day
+    mov ax, 0
+    mov al, dl
+    mWrite2DigitNumber
+
+    mWriteDelimiter dateDelimiter
+
+    ; Write month
+    mov ah, 2ah
+    int 21h
+    mov ax, 0
+    mov al, dh
+    mWrite2DigitNumber
+
+    mWriteDelimiter dateDelimiter
+
+    ; Write year
+    mov ah, 2ah
+    int 21h
+    mov ax, cx
+    mWrite2DigitNumber
+
+    mov bx, [filehandle]
+    mov cx, sizeof dateFooter
+    lea dx, dateFooter
+    mov ah, 40h
+    int 21h
+
+
+    ; ----- HOUR -----
+
+    mov bx, [filehandle]
+    mov cx, sizeof hourHeader
+    lea dx, hourHeader
+    mov ah, 40h
+    int 21h
+
+    mov ah, 2ch
+    int 21h
+    ; CH = hour, CL = minute, DH = second
+
+    ; Write hour
+    mov ax, 0
+    mov al, ch
+    mWrite2DigitNumber
+
+    mWriteDelimiter hourDelimiter
+
+    ; Write minute
+    mov ah, 2ch
+    int 21h
+    mov ax, 0
+    mov al, cl
+    mWrite2DigitNumber
+
+    mWriteDelimiter hourDelimiter
+
+    ; Write second
+    mov ah, 2ch
+    int 21h
+    mov ax, 0
+    mov al, dh
+    mWrite2DigitNumber
+    
+    mov bx, [filehandle]
+    mov cx, sizeof hourFooter
+    lea dx, hourFooter
+    mov ah, 40h
+    int 21h
+
+endm
+
+
+mWriteDelimiter macro delimiter
+    mov bx, [filehandle]
+    mov cx, sizeof delimiter
+    lea dx, delimiter
+    mov ah, 40h
+    int 21h
+endm
+
+; Put in ax the number to write
+mWrite2DigitNumber macro
+
+    mNumberToString
+    lea dx, numberString
+    add dx, 4 ; Last 2 digits of the day
+    mov bx, [filehandle]
+    mov cx, 2
+    mov ah, 40h
+    int 21h
+
+endm
+
+mWriteDatasheet macro
+
+    local headers_loop, end_headers_loop,write_header
+
+    ; Table start
+    mov bx, [filehandle]
+    mov cx, sizeof tableHeader
+    lea dx, tableHeader
+    mov ah, 40h
+    int 21h
+
+    ; Write the headers
+    mWriteTag trOpen
+
+    lea si, filereadbuffer
+    headers_loop:
+        
+        mWriteTag tdOpen
+
+        mPrintAddress si
+        mWaitForEnter
+
+        ; Write the header
+        write_header:
+            mov al, [si]
+            
+            cmp al, '$' ; next header
+            je next_header
+
+            cmp al, 0
+            je next_header
+
+            mWriteChar al
+
+            inc si
+            jmp write_header
+
+
+        next_header:
+            mWriteTag tdClose
+            inc si
+            mov al, [si]
+            cmp al, '$' ; Double $
+            je end_headers_loop
+
+            jmp headers_loop
+
+
+    end_headers_loop:
+    mWriteTag trClose
+
+endm
+
+mWriteTag macro tag
+    mov bx, [filehandle]
+    mov cx, sizeof tag
+    lea dx, tag
+    mov ah, 40h
+    int 21h 
+endm
+
+
+mWriteChar macro char
+    mov [charBuffer], char
+    mov bx, [filehandle]
+    mov cx, 1
+    mov dx, offset charBuffer
+    mov ah, 40h
+    int 21h
 endm
