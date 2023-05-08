@@ -7,8 +7,3 @@
 
 <br>
 <br>
-
-
-## Demo
-
-![Demo](Pacman.gif)
